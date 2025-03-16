@@ -1,0 +1,55 @@
+basePath: /
+host: localhost:8080
+info:
+  contact:
+    email: support@imageapi.com
+    name: API Support
+  description: Rasmlarni solishtirish uchun API servis
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Image Recognition API
+  version: "1.0"
+paths:
+  /recognize:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Foydalanuvchi yuborgan rasmni bazadagi rasmlar bilan solishtirish
+      parameters:
+      - description: Tekshiriladigan rasm
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Recognize image
+      tags:
+      - Image Recognition
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
