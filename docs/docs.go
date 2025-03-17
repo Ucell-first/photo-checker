@@ -23,9 +23,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/recognize": {
+        "/admin/add": {
             "post": {
-                "description": "Foydalanuvchi yuborgan rasmni bazadagi rasmlar bilan solishtirish",
+                "description": "Add a new reference image to the database",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -33,16 +33,22 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Image Recognition"
+                    "Image Database Management"
                 ],
-                "summary": "Recognize image",
+                "summary": "Add new image to database",
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "Tekshiriladigan rasm",
+                        "description": "Image to add",
                         "name": "image",
                         "in": "formData",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Custom name for the image",
+                        "name": "name",
+                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -75,6 +81,167 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/admin/images": {
+            "get": {
+                "description": "Get a list of all reference images",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Image Database Management"
+                ],
+                "summary": "List all images in database",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/main.imageInfo"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/stats": {
+            "get": {
+                "description": "Get statistics about the image database",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Image Database Management"
+                ],
+                "summary": "Get database stats",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "API health check endpoint",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "System"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/recognize": {
+            "post": {
+                "description": "Compare uploaded image against database",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Image Recognition"
+                ],
+                "summary": "Recognize image",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Image to check",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Similarity threshold (0-100, default 80)",
+                        "name": "threshold",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.RecognizeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "main.RecognizeResponse": {
+            "type": "object",
+            "properties": {
+                "matched_image": {
+                    "type": "string"
+                },
+                "processing_time_ms": {
+                    "type": "integer"
+                },
+                "result": {
+                    "description": "\"OK\" or \"NOT OK\"",
+                    "type": "string"
+                },
+                "similarity": {
+                    "description": "Similarity percentage",
+                    "type": "number"
+                }
+            }
+        },
+        "main.imageInfo": {
+            "type": "object",
+            "properties": {
+                "added_at": {
+                    "type": "string"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "thumbnail": {
+                    "type": "string"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -88,12 +255,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
+	Version:          "1.1",
 	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Image Recognition API",
-	Description:      "Rasmlarni solishtirish uchun API servis",
+	Description:      "API service for comparing images",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
