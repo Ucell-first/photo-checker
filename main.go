@@ -42,8 +42,9 @@ func computeHash(img image.Image) string {
 	var sum uint64
 	for y := 0; y < 8; y++ {
 		for x := 0; x < 8; x++ {
-			c := gray.At(x, y).(color.NRGBA) // color.Gray o‘rniga color.NRGBA
-			sum += uint64(c.R)               // Gray qiymat sifatida c.R ishlatamiz
+			// Rangni to'g'ri olish uchun konvertatsiya qilamiz
+			c := color.GrayModel.Convert(gray.At(x, y)).(color.Gray)
+			sum += uint64(c.Y)
 		}
 	}
 	avg := uint8(sum / 64)
@@ -51,8 +52,8 @@ func computeHash(img image.Image) string {
 	var hash strings.Builder
 	for y := 0; y < 8; y++ {
 		for x := 0; x < 8; x++ {
-			c := gray.At(x, y).(color.NRGBA) // color.Gray o‘rniga color.NRGBA
-			if c.R >= avg {
+			c := color.GrayModel.Convert(gray.At(x, y)).(color.Gray)
+			if c.Y >= avg {
 				hash.WriteString("1")
 			} else {
 				hash.WriteString("0")
@@ -60,6 +61,16 @@ func computeHash(img image.Image) string {
 		}
 	}
 	return hash.String()
+}
+
+// compareHashes solishtirish funksiyasi
+func compareHashes(uploadedHash string, threshold int) bool {
+	for _, existingHash := range existingHashes {
+		if hammingDistance(uploadedHash, existingHash) <= threshold {
+			return true
+		}
+	}
+	return false
 }
 
 // hammingDistance hash'lar orasidagi masofani hisoblaydi
@@ -112,8 +123,9 @@ func recognizeHandler(c *gin.Context) {
 	}
 
 	uploadedHash := computeHash(img)
-	threshold := 5
-	ok := false
+	threshold := 10 // 10 bitgacha farqga yo'l qo'yish
+
+	ok := compareHashes(uploadedHash, threshold)
 
 	for _, existingHash := range existingHashes {
 		if hammingDistance(uploadedHash, existingHash) <= threshold {
