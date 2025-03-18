@@ -63,6 +63,17 @@ paths:
       summary: Add new image to database
       tags:
       - Image Database Management
+  /admin/hello:
+    get:
+      description: hello
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+      summary: Hello
+      tags:
+      - Image Database Management
   /recognize:
     post:
       consumes:

@@ -468,7 +468,7 @@ func main() {
 			addImageHandler(c, db, imageDir)
 		})
 		admin.GET("/hello", func(c *gin.Context) {
-			c.JSON(http.StatusOK, "Hello!")
+			Hello(c)
 		})
 	}
 
@@ -479,4 +479,15 @@ func main() {
 	if err := r.Run(port); err != nil {
 		log.Fatalf("Could not start server: %v", err)
 	}
+}
+
+// @Summary Hello
+// @Description hello
+// @Tags Image Database Management
+// @Success 200 {object} string
+// @Router /admin/hello [get]
+func Hello(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Hello, world",
+	})
 }

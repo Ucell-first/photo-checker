@@ -82,6 +82,23 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/hello": {
+            "get": {
+                "description": "hello",
+                "tags": [
+                    "Image Database Management"
+                ],
+                "summary": "Hello",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/recognize": {
             "post": {
                 "description": "Compare uploaded image against database",
