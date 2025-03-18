@@ -6,10 +6,11 @@ services:
     build: .
     ports:
       - "8080:8080"
+    volumes:
+      - ./images:/app/images
     networks:
      - test
 
 networks:
   test:
     external: true
-   
