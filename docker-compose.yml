@@ -1,0 +1,15 @@
+version: '3.9'
+
+services:
+  crudservice:
+    container_name: crud
+    build: .
+    ports:
+      - "8080:8080"
+    networks:
+     - test
+
+networks:
+  test:
+    external: true
+   
