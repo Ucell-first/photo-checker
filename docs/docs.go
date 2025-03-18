@@ -82,73 +82,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/admin/images": {
-            "get": {
-                "description": "Get a list of all reference images",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Image Database Management"
-                ],
-                "summary": "List all images in database",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/main.imageInfo"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/admin/stats": {
-            "get": {
-                "description": "Get statistics about the image database",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Image Database Management"
-                ],
-                "summary": "Get database stats",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/health": {
-            "get": {
-                "description": "API health check endpoint",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "System"
-                ],
-                "summary": "Health check",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/recognize": {
             "post": {
                 "description": "Compare uploaded image against database",
@@ -217,29 +150,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "result": {
-                    "description": "\"OK\" or \"NOT OK\"",
                     "type": "string"
                 },
                 "similarity": {
-                    "description": "Similarity percentage",
                     "type": "number"
-                }
-            }
-        },
-        "main.imageInfo": {
-            "type": "object",
-            "properties": {
-                "added_at": {
-                    "type": "string"
-                },
-                "filename": {
-                    "type": "string"
-                },
-                "hash": {
-                    "type": "string"
-                },
-                "thumbnail": {
-                    "type": "string"
                 }
             }
         }

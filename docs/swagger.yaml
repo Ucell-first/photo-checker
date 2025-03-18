@@ -7,22 +7,9 @@ definitions:
       processing_time_ms:
         type: integer
       result:
-        description: '"OK" or "NOT OK"'
         type: string
       similarity:
-        description: Similarity percentage
         type: number
-    type: object
-  main.imageInfo:
-    properties:
-      added_at:
-        type: string
-      filename:
-        type: string
-      hash:
-        type: string
-      thumbnail:
-        type: string
     type: object
 host: localhost:8080
 info:
@@ -76,50 +63,6 @@ paths:
       summary: Add new image to database
       tags:
       - Image Database Management
-  /admin/images:
-    get:
-      description: Get a list of all reference images
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/main.imageInfo'
-            type: array
-      summary: List all images in database
-      tags:
-      - Image Database Management
-  /admin/stats:
-    get:
-      description: Get statistics about the image database
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get database stats
-      tags:
-      - Image Database Management
-  /health:
-    get:
-      description: API health check endpoint
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Health check
-      tags:
-      - System
   /recognize:
     post:
       consumes:
