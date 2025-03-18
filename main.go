@@ -467,6 +467,9 @@ func main() {
 		admin.POST("/add", func(c *gin.Context) {
 			addImageHandler(c, db, imageDir)
 		})
+		admin.GET("/hello", func(c *gin.Context) {
+			c.JSON(http.StatusOK, "Hello!")
+		})
 	}
 
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
