@@ -7,12 +7,10 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - image_data:/app/images  # Use a named volume
+      - ./images:/app/images  # Mount the local images directory
+    user: "1000:1000"  # Set to your host user UID:GID (adjust these numbers based on your user)
     networks:
      - test
-
-volumes:
-  image_data:  # Define the named volume
 
 networks:
   test:

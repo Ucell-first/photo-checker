@@ -410,7 +410,12 @@ func addImageHandler(c *gin.Context, db *ImageDatabase, imageDir string) {
 	}
 	err = imaging.Save(img, savePath)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not save image"})
+		log.Printf("Error saving image to %s: %v", savePath, err)
+		if os.IsPermission(err) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Permission denied when saving image. Check container volume permissions."})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not save image"})
+		}
 		return
 	}
 
