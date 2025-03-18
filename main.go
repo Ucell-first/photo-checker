@@ -1,16 +1,10 @@
-// @title Image Recognition API
-// @version 1.1
-// @description API service for comparing images
-// @termsOfService http://swagger.io/terms/
-// @contact.name API Support
-// @contact.email support@imageapi.com
-// @license.name Apache 2.0
-// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
-// @host localhost:8080
-// @BasePath /
 // @securityDefinitions.apikey ApiKeyAuth
 // @in header
 // @name Authorization
+// @title User
+// @version 1.0
+// @description API Gateway
+// BasePath: /
 package main
 
 import (
