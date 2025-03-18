@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY .env .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -C ./cmd -a -installsuffix cgo -o ./../myapp .
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o myapp .
 
 FROM alpine:latest
 
