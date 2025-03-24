@@ -1,12 +1,10 @@
 definitions:
-  main.RecognizeResponse:
+  main.CompareResponse:
     properties:
-      matched_image:
-        type: string
+      match:
+        type: boolean
       processing_time_ms:
         type: integer
-      result:
-        type: string
       similarity:
         type: number
     type: object
@@ -63,18 +61,23 @@ paths:
       summary: Hello
       tags:
       - Image Database Management
-  /recognize:
+  /compare:
     post:
       consumes:
       - multipart/form-data
-      description: Compare uploaded image against database
+      description: Compare two uploaded images and return similarity
       parameters:
-      - description: Image to check
+      - description: First image to compare
         in: formData
-        name: image
+        name: image1
         required: true
         type: file
-      - description: Similarity threshold (0-100, default 80)
+      - description: Second image to compare
+        in: formData
+        name: image2
+        required: true
+        type: file
+      - description: Similarity threshold (0-100, default 85)
         in: formData
         name: threshold
         type: number
@@ -84,7 +87,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.RecognizeResponse'
+            $ref: '#/definitions/main.CompareResponse'
         "400":
           description: Bad Request
           schema:
@@ -97,13 +100,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Recognize image
+      summary: Compare two images
       tags:
-      - Image Recognition
-securityDefinitions:
-  ApiKeyAuth:
-    description: API Gateway
-    in: header
-    name: Authorization
-    type: apiKey
+      - Image Comparison
 swagger: "2.0"

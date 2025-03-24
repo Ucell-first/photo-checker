@@ -1,10 +1,3 @@
-// @securityDefinitions.apikey ApiKeyAuth
-// @in header
-// @name Authorization
-// @title User
-// @version 1.0
-// @description API Gateway
-// BasePath: /
 package main
 
 import (
@@ -15,6 +8,7 @@ import (
 	"image/color"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -23,27 +17,30 @@ import (
 	"sync"
 	"time"
 
-	_ "photot/docs"
-
 	"github.com/disintegration/imaging"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/patrickmn/go-cache"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	tf "github.com/wamuir/graft/tensorflow"
 )
+
+// Update imageInfo to store an embedding vector (as a []float32)
+type imageInfo struct {
+	Filename  string    `json:"filename"`
+	Hash      string    `json:"hash"` // still keeping the hash for legacy or quick checks
+	AddedAt   time.Time `json:"added_at"`
+	Thumbnail string    `json:"thumbnail,omitempty"`
+	Embedding []float32 `json:"-"` // not sent in JSON responses
+}
 
 type ImageDatabase struct {
 	hashes map[string]imageInfo
 	mutex  sync.RWMutex
 	cache  *cache.Cache
-}
-
-type imageInfo struct {
-	Filename  string    `json:"filename"`
-	Hash      string    `json:"hash"`
-	AddedAt   time.Time `json:"added_at"`
-	Thumbnail string    `json:"thumbnail,omitempty"`
+	// Hold the TensorFlow model once loaded
+	tfModel *tf.SavedModel
 }
 
 type RecognizeResponse struct {
@@ -53,14 +50,23 @@ type RecognizeResponse struct {
 	ProcessingTimeMs int64   `json:"processing_time_ms"`
 }
 
-func NewImageDatabase() *ImageDatabase {
+func NewImageDatabase(modelDir string) *ImageDatabase {
+	// Load the TensorFlow SavedModel.
+	// Adjust the tags and options as needed.
+	model, err := tf.LoadSavedModel(modelDir, []string{"serve"}, nil)
+	if err != nil {
+		log.Fatalf("Failed to load model: %v", err)
+	}
 	return &ImageDatabase{
-		hashes: make(map[string]imageInfo),
-		cache:  cache.New(5*time.Minute, 10*time.Minute),
+		hashes:  make(map[string]imageInfo),
+		cache:   cache.New(5*time.Minute, 10*time.Minute),
+		tfModel: model,
 	}
 }
 
+// computeDCTHash remains unchanged (if you want to keep it)
 func computeDCTHash(img image.Image) string {
+	// ... your original DCT hash code ...
 	resized := imaging.Resize(img, 32, 32, imaging.Lanczos)
 	gray := imaging.Grayscale(resized)
 	const blockSize = 8
@@ -98,11 +104,11 @@ func computeDCTHash(img image.Image) string {
 			hash.WriteString("0")
 		}
 	}
+	// Additional gradient bits (unchanged)
 	for y := 0; y < 8; y++ {
 		for x := 0; x < 7; x++ {
 			c1 := color.GrayModel.Convert(gray.At(x*4, y*4)).(color.Gray)
 			c2 := color.GrayModel.Convert(gray.At((x+1)*4, y*4)).(color.Gray)
-
 			if c1.Y > c2.Y {
 				hash.WriteString("1")
 			} else {
@@ -113,14 +119,12 @@ func computeDCTHash(img image.Image) string {
 	for i := 0; i < 7; i++ {
 		c1 := color.GrayModel.Convert(gray.At(i*4, i*4)).(color.Gray)
 		c2 := color.GrayModel.Convert(gray.At((i+1)*4, (i+1)*4)).(color.Gray)
-
 		if c1.Y > c2.Y {
 			hash.WriteString("1")
 		} else {
 			hash.WriteString("0")
 		}
 	}
-
 	return hash.String()
 }
 
@@ -134,17 +138,72 @@ func generateThumbnail(img image.Image) string {
 	return base64.StdEncoding.EncodeToString(buf.Bytes())
 }
 
-func hammingDistance(hash1, hash2 string) (int, error) {
-	if len(hash1) != len(hash2) {
-		return 0, fmt.Errorf("hash lengths do not match: %d vs %d", len(hash1), len(hash2))
-	}
-	distance := 0
-	for i := 0; i < len(hash1); i++ {
-		if hash1[i] != hash2[i] {
-			distance++
+// computeMLEmbedding extracts a feature vector using the ML model.
+// Adjust input preprocessing and output extraction based on your model.
+func (db *ImageDatabase) computeMLEmbedding(img image.Image) ([]float32, error) {
+	// Resize and normalize the image as required by the model.
+	// Here we assume the model requires 224x224 images (like many CNNs).
+	resized := imaging.Resize(img, 224, 224, imaging.Lanczos)
+	// Convert the image to a [][][]float32 tensor (batch size 1).
+	// This is a simplified example. Real preprocessing may require mean subtraction, scaling, etc.
+	bounds := resized.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+	// Create a slice to hold the pixel data in [height][width][channels] format.
+	data := make([][][]float32, height)
+	for y := 0; y < height; y++ {
+		row := make([][]float32, width)
+		for x := 0; x < width; x++ {
+			// Get RGB values (we assume the model expects three channels)
+			r, g, b, _ := resized.At(x, y).RGBA()
+			// Convert from uint32 (0-65535) to float32 (0-1)
+			row[x] = []float32{float32(r) / 65535.0, float32(g) / 65535.0, float32(b) / 65535.0}
 		}
+		data[y] = row
 	}
-	return distance, nil
+	// Create a tensor from the data. The shape will be [1, height, width, 3]
+	tensor, err := tf.NewTensor([][][][]float32{data})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create tensor: %v", err)
+	}
+
+	// Run the model (adjust input and output node names accordingly)
+	// For example, if your model input node is "input" and output node is "embedding":
+	result, err := db.tfModel.Session.Run(
+		map[tf.Output]*tf.Tensor{
+			db.tfModel.Graph.Operation("input").Output(0): tensor,
+		},
+		[]tf.Output{
+			db.tfModel.Graph.Operation("embedding").Output(0),
+		},
+		nil,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to run session: %v", err)
+	}
+
+	// The result is expected to be a 2D slice with shape [1, embedding_size]
+	embeddingRaw, ok := result[0].Value().([][]float32)
+	if !ok || len(embeddingRaw) == 0 {
+		return nil, fmt.Errorf("unexpected tensor output type")
+	}
+	return embeddingRaw[0], nil
+}
+
+// cosineSimilarity calculates the cosine similarity between two vectors.
+func cosineSimilarity(a, b []float32) (float64, error) {
+	if len(a) != len(b) {
+		return 0, fmt.Errorf("vector length mismatch")
+	}
+	var dot, normA, normB float64
+	for i := 0; i < len(a); i++ {
+		dot += float64(a[i] * b[i])
+		normA += float64(a[i] * a[i])
+		normB += float64(b[i] * b[i])
+	}
+	if normA == 0 || normB == 0 {
+		return 0, fmt.Errorf("zero vector")
+	}
+	return dot / (math.Sqrt(normA) * math.Sqrt(normB)) * 100.0, nil // percentage similarity
 }
 
 func (db *ImageDatabase) LoadImages(imageDir string) error {
@@ -183,8 +242,16 @@ func (db *ImageDatabase) LoadImages(imageDir string) error {
 				return
 			}
 
+			// Compute the legacy hash if you still want to use it.
 			hash := computeDCTHash(img)
 			thumbnail := generateThumbnail(img)
+
+			// Compute the ML embedding.
+			embedding, err := db.computeMLEmbedding(img)
+			if err != nil {
+				log.Printf("Could not compute ML embedding for %s: %v", path, err)
+				return
+			}
 
 			db.mutex.Lock()
 			db.hashes[hash] = imageInfo{
@@ -192,6 +259,7 @@ func (db *ImageDatabase) LoadImages(imageDir string) error {
 				Hash:      hash,
 				AddedAt:   time.Now(),
 				Thumbnail: thumbnail,
+				Embedding: embedding,
 			}
 			db.mutex.Unlock()
 
@@ -217,8 +285,15 @@ func isImageFile(ext string) bool {
 	return supportedExts[ext]
 }
 
+// FindMatch now uses the ML embedding for similarity measurement.
 func (db *ImageDatabase) FindMatch(img image.Image, similarityThreshold float64) (bool, string, float64) {
+	// Compute both the legacy hash and the ML embedding for the uploaded image.
 	uploadedHash := computeDCTHash(img)
+	uploadedEmbedding, err := db.computeMLEmbedding(img)
+	if err != nil {
+		log.Printf("Error computing embedding: %v", err)
+		return false, "", 0.0
+	}
 
 	db.mutex.RLock()
 	defer db.mutex.RUnlock()
@@ -228,34 +303,57 @@ func (db *ImageDatabase) FindMatch(img image.Image, similarityThreshold float64)
 	}
 
 	bestMatch := ""
-	minDistance := len(uploadedHash)
+	bestSimilarity := 0.0
 
-	for hash, info := range db.hashes {
-		distance, err := hammingDistance(uploadedHash, hash)
+	for _, info := range db.hashes {
+		// First, you might filter using the hash difference as a fast pre-check.
+		distance, err := hammingDistance(uploadedHash, info.Hash)
 		if err != nil {
 			continue
 		}
+		if distance > 10 { // for example, skip if the perceptual hash is too different
+			continue
+		}
 
-		if distance < minDistance {
-			minDistance = distance
+		// Then compute the cosine similarity on ML embeddings.
+		sim, err := cosineSimilarity(uploadedEmbedding, info.Embedding)
+		if err != nil {
+			continue
+		}
+		if sim > bestSimilarity {
+			bestSimilarity = sim
 			bestMatch = info.Filename
 		}
 	}
 
-	maxDistance := len(uploadedHash)
-	similarity := 100.0 - (float64(minDistance) / float64(maxDistance) * 100.0)
+	log.Printf("Best ML similarity: %.2f%%, threshold: %.2f%%", bestSimilarity, similarityThreshold)
 
-	log.Printf("Uploaded hash: %s", uploadedHash[:20]+"...")
-	log.Printf("Best match: %s, similarity: %.2f%%, threshold: %.2f%%", bestMatch, similarity, similarityThreshold)
+	isMatch := bestSimilarity >= similarityThreshold
 
-	isMatch := similarity >= similarityThreshold
+	return isMatch, bestMatch, bestSimilarity
+}
 
-	return isMatch, bestMatch, similarity
+// hammingDistance remains unchanged.
+func hammingDistance(hash1, hash2 string) (int, error) {
+	if len(hash1) != len(hash2) {
+		return 0, fmt.Errorf("hash lengths do not match: %d vs %d", len(hash1), len(hash2))
+	}
+	distance := 0
+	for i := 0; i < len(hash1); i++ {
+		if hash1[i] != hash2[i] {
+			distance++
+		}
+	}
+	return distance, nil
 }
 
 func (db *ImageDatabase) AddImage(img image.Image, filename string) (string, error) {
 	hash := computeDCTHash(img)
 	thumbnail := generateThumbnail(img)
+	embedding, err := db.computeMLEmbedding(img)
+	if err != nil {
+		return "", fmt.Errorf("failed to compute ML embedding: %v", err)
+	}
 
 	db.mutex.Lock()
 	defer db.mutex.Unlock()
@@ -271,6 +369,7 @@ func (db *ImageDatabase) AddImage(img image.Image, filename string) (string, err
 		Hash:      hash,
 		AddedAt:   time.Now(),
 		Thumbnail: thumbnail,
+		Embedding: embedding,
 	}
 
 	return hash, nil
@@ -292,17 +391,7 @@ func (db *ImageDatabase) ListImages() []imageInfo {
 	return images
 }
 
-// @Summary Recognize image
-// @Description Compare uploaded image against database
-// @Tags Image Recognition
-// @Accept multipart/form-data
-// @Produce json
-// @Param image formData file true "Image to check"
-// @Param threshold formData float64 false "Similarity threshold (0-100, default 80)"
-// @Success 200 {object} RecognizeResponse
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /recognize [post]
+// recognizeHandler and addImageHandler remain largely unchanged except that they now use the updated FindMatch and AddImage.
 func recognizeHandler(c *gin.Context, db *ImageDatabase) {
 	startTime := time.Now()
 	file, header, err := c.Request.FormFile("image")
@@ -356,17 +445,6 @@ func recognizeHandler(c *gin.Context, db *ImageDatabase) {
 	c.JSON(http.StatusOK, response)
 }
 
-// @Summary Add new image to database
-// @Description Add a new reference image to the database
-// @Tags Image Database Management
-// @Accept multipart/form-data
-// @Produce json
-// @Param image formData file true "Image to add"
-// @Param name formData string false "Custom name for the image"
-// @Success 200 {object} map[string]string
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
-// @Router /admin/add [post]
 func addImageHandler(c *gin.Context, db *ImageDatabase, imageDir string) {
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
@@ -427,6 +505,12 @@ func addImageHandler(c *gin.Context, db *ImageDatabase, imageDir string) {
 	})
 }
 
+func Hello(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Hello, world",
+	})
+}
+
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 	log.Println("Application starting...")
@@ -440,7 +524,9 @@ func main() {
 		log.Printf("Created images directory: %s", imageDir)
 	}
 
-	db := NewImageDatabase()
+	// Pass the path to your SavedModel directory
+	modelDir := "./saved_model"
+	db := NewImageDatabase(modelDir)
 	if err := db.LoadImages(imageDir); err != nil {
 		log.Fatalf("Failed to load images: %v", err)
 	}
@@ -473,15 +559,4 @@ func main() {
 	if err := r.Run(port); err != nil {
 		log.Fatalf("Could not start server: %v", err)
 	}
-}
-
-// @Summary Hello
-// @Description hello
-// @Tags Image Database Management
-// @Success 200 {object} string
-// @Router /admin/hello [get]
-func Hello(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Hello, world",
-	})
 }

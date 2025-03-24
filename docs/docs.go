@@ -91,9 +91,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/recognize": {
+        "/compare": {
             "post": {
-                "description": "Compare uploaded image against database",
+                "description": "Compare two uploaded images and return similarity",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -101,20 +101,27 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Image Recognition"
+                    "Image Comparison"
                 ],
-                "summary": "Recognize image",
+                "summary": "Compare two images",
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "Image to check",
-                        "name": "image",
+                        "description": "First image to compare",
+                        "name": "image1",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Second image to compare",
+                        "name": "image2",
                         "in": "formData",
                         "required": true
                     },
                     {
                         "type": "number",
-                        "description": "Similarity threshold (0-100, default 80)",
+                        "description": "Similarity threshold (0-100, default 85)",
                         "name": "threshold",
                         "in": "formData"
                     }
@@ -123,7 +130,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.RecognizeResponse"
+                            "$ref": "#/definitions/main.CompareResponse"
                         }
                     },
                     "400": {
@@ -149,30 +156,19 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "main.RecognizeResponse": {
+        "main.CompareResponse": {
             "type": "object",
             "properties": {
-                "matched_image": {
-                    "type": "string"
+                "match": {
+                    "type": "boolean"
                 },
                 "processing_time_ms": {
                     "type": "integer"
-                },
-                "result": {
-                    "type": "string"
                 },
                 "similarity": {
                     "type": "number"
                 }
             }
-        }
-    },
-    "securityDefinitions": {
-        "ApiKeyAuth": {
-            "description": "API Gateway",
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
         }
     }
 }`
