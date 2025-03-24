@@ -526,7 +526,7 @@ func (h *Handler) AddImageHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "Rasm muvaffaqiyatli qo'shildi",
+		"message":  "immage added succesfully",
 		"filename": uniqueFilename,
 		"hash":     hash,
 	})
