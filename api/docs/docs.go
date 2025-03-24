@@ -161,7 +161,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handler.RecognizeResponse"
+                            "$ref": "#/definitions/database.RecognizeResponse"
                         }
                     },
                     "400": {
@@ -187,7 +187,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "handler.RecognizeResponse": {
+        "database.RecognizeResponse": {
             "type": "object",
             "properties": {
                 "matched_image": {

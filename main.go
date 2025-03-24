@@ -5,6 +5,7 @@ import (
 	"os"
 	"photot/api"
 	"photot/api/handler"
+	"photot/helper/database"
 )
 
 func main() {
@@ -27,7 +28,7 @@ func NewHandler() *handler.Handler {
 		log.Printf("pictures folder is created: %s", imageDir)
 	}
 
-	db := handler.NewImageDatabase()
+	db := database.NewImageDatabase()
 	if err := db.LoadImages(imageDir); err != nil {
 		log.Fatalf("Could not load images: %v", err)
 	}

@@ -154,7 +154,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handler.RecognizeResponse"
+                            "$ref": "#/definitions/database.RecognizeResponse"
                         }
                     },
                     "400": {
@@ -180,7 +180,7 @@
         }
     },
     "definitions": {
-        "handler.RecognizeResponse": {
+        "database.RecognizeResponse": {
             "type": "object",
             "properties": {
                 "matched_image": {
