@@ -22,7 +22,7 @@ create_mig:
 	migrate create -ext sql -dir migrations -seq $$filename
 
 swag:
-	~/go/bin/swag init -g ./main.go -o ./docs
+	~/go/bin/swag init -g ./api/router.go -o ./api/docs
 
 
 	

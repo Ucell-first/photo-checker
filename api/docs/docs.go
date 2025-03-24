@@ -161,7 +161,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.RecognizeResponse"
+                            "$ref": "#/definitions/handler.RecognizeResponse"
                         }
                     },
                     "400": {
@@ -187,14 +187,14 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "main.RecognizeResponse": {
+        "handler.RecognizeResponse": {
             "type": "object",
             "properties": {
                 "matched_image": {
                     "type": "string"
                 },
                 "method": {
-                    "description": "\"ml\" yoki \"hash\"",
+                    "description": "\"ml\" or \"hash\"",
                     "type": "string"
                 },
                 "processing_time_ms": {
