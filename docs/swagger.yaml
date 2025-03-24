@@ -1,28 +1,37 @@
+basePath: /
 definitions:
-  main.CompareResponse:
+  main.RecognizeResponse:
     properties:
-      match:
-        type: boolean
+      matched_image:
+        type: string
+      method:
+        description: '"ml" yoki "hash"'
+        type: string
       processing_time_ms:
         type: integer
+      result:
+        type: string
       similarity:
         type: number
     type: object
 info:
   contact: {}
+  description: API for image recognition using ML and perceptual hashing
+  title: Photo Recognition API
+  version: "1.1"
 paths:
   /admin/add:
     post:
       consumes:
       - multipart/form-data
-      description: Add a new reference image to the database
+      description: Add reference image to database
       parameters:
-      - description: Image to add
+      - description: Image file to upload
         in: formData
         name: image
         required: true
         type: file
-      - description: Custom name for the image
+      - description: Custom image name
         in: formData
         name: name
         type: string
@@ -47,37 +56,57 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Add new image to database
+      summary: Add new image
       tags:
       - Image Database Management
   /admin/hello:
     get:
-      description: hello
+      description: Test connection endpoint
+      produces:
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            type: string
-      summary: Hello
+            additionalProperties:
+              type: string
+            type: object
+      summary: Hello endpoint
       tags:
       - Image Database Management
-  /compare:
+  /admin/toggle-ml:
     post:
       consumes:
       - multipart/form-data
-      description: Compare two uploaded images and return similarity
+      description: Enable/disable ML-based recognition
       parameters:
-      - description: First image to compare
+      - description: Set to 'true' or 'false'
         in: formData
-        name: image1
+        name: enable
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Toggle ML mode
+      tags:
+      - Image Database Management
+  /recognize:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Compare uploaded image against database using ML or hashing
+      parameters:
+      - description: Image file to check
+        in: formData
+        name: image
         required: true
         type: file
-      - description: Second image to compare
-        in: formData
-        name: image2
-        required: true
-        type: file
-      - description: Similarity threshold (0-100, default 85)
+      - description: Similarity threshold (0-100)
         in: formData
         name: threshold
         type: number
@@ -87,7 +116,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/main.CompareResponse'
+            $ref: '#/definitions/main.RecognizeResponse'
         "400":
           description: Bad Request
           schema:
@@ -100,7 +129,7 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: Compare two images
+      summary: Recognize image
       tags:
-      - Image Comparison
+      - Image Recognition
 swagger: "2.0"

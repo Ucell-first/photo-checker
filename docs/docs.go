@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/admin/add": {
             "post": {
-                "description": "Add a new reference image to the database",
+                "description": "Add reference image to database",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -27,18 +27,18 @@ const docTemplate = `{
                 "tags": [
                     "Image Database Management"
                 ],
-                "summary": "Add new image to database",
+                "summary": "Add new image",
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "Image to add",
+                        "description": "Image file to upload",
                         "name": "image",
                         "in": "formData",
                         "required": true
                     },
                     {
                         "type": "string",
-                        "description": "Custom name for the image",
+                        "description": "Custom image name",
                         "name": "name",
                         "in": "formData"
                     }
@@ -76,24 +76,30 @@ const docTemplate = `{
         },
         "/admin/hello": {
             "get": {
-                "description": "hello",
+                "description": "Test connection endpoint",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "Image Database Management"
                 ],
-                "summary": "Hello",
+                "summary": "Hello endpoint",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "string"
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
             }
         },
-        "/compare": {
+        "/admin/toggle-ml": {
             "post": {
-                "description": "Compare two uploaded images and return similarity",
+                "description": "Enable/disable ML-based recognition",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -101,27 +107,52 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Image Comparison"
+                    "Image Database Management"
                 ],
-                "summary": "Compare two images",
+                "summary": "Toggle ML mode",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Set to 'true' or 'false'",
+                        "name": "enable",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/recognize": {
+            "post": {
+                "description": "Compare uploaded image against database using ML or hashing",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Image Recognition"
+                ],
+                "summary": "Recognize image",
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "First image to compare",
-                        "name": "image1",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Second image to compare",
-                        "name": "image2",
+                        "description": "Image file to check",
+                        "name": "image",
                         "in": "formData",
                         "required": true
                     },
                     {
                         "type": "number",
-                        "description": "Similarity threshold (0-100, default 85)",
+                        "description": "Similarity threshold (0-100)",
                         "name": "threshold",
                         "in": "formData"
                     }
@@ -130,7 +161,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/main.CompareResponse"
+                            "$ref": "#/definitions/main.RecognizeResponse"
                         }
                     },
                     "400": {
@@ -156,14 +187,21 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "main.CompareResponse": {
+        "main.RecognizeResponse": {
             "type": "object",
             "properties": {
-                "match": {
-                    "type": "boolean"
+                "matched_image": {
+                    "type": "string"
+                },
+                "method": {
+                    "description": "\"ml\" yoki \"hash\"",
+                    "type": "string"
                 },
                 "processing_time_ms": {
                     "type": "integer"
+                },
+                "result": {
+                    "type": "string"
                 },
                 "similarity": {
                     "type": "number"
@@ -175,12 +213,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
+	Version:          "1.1",
 	Host:             "",
-	BasePath:         "",
+	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "",
-	Description:      "",
+	Title:            "Photo Recognition API",
+	Description:      "API for image recognition using ML and perceptual hashing",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
