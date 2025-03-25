@@ -4,7 +4,7 @@ A Go-based web service for managing and checking photos.
 
 ## Overview
 
-Photo Checker is a web service that provides an API for managing images. It includes functionality for storing images and maintaining an image database. It will check photos using ml and hashing.
+Photo Checker is a web service that provides an API for managing images. It includes functionality for storing images and maintaining an image database. It will check photos first using ml and second hashing.
 
 ## Features
 
