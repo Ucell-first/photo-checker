@@ -50,13 +50,13 @@ func (h *Handler) RecognizeHandler(c *gin.Context) {
 	startTime := time.Now()
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Rasm fayli topilmadi"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Image file not found"})
 		return
 	}
 	defer file.Close()
 
 	if header.Size > 10<<20 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Fayl hajmi 10MB dan oshib ketdi"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File size exceeds 10MB"})
 		return
 	}
 
@@ -71,13 +71,13 @@ func (h *Handler) RecognizeHandler(c *gin.Context) {
 
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Faylni o'qib bo'lmadi"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "File could not be read."})
 		return
 	}
 
 	img, err := imaging.Decode(bytes.NewReader(fileBytes))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Noto'g'ri rasm formati"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid image format"})
 		return
 	}
 
@@ -114,18 +114,18 @@ func (h *Handler) RecognizeHandler(c *gin.Context) {
 func (h *Handler) AddImageHandler(c *gin.Context) {
 	file, header, err := c.Request.FormFile("image")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Rasm fayli topilmadi"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Image file not found"})
 		return
 	}
 	defer file.Close()
 
 	if header.Size > 10<<20 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Fayl hajmi 10MB dan oshib ketdi"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File size exceeds 10MB"})
 		return
 	}
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if !isImageFile(ext) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Qo'llab-quvvatlanmaydigan fayl formati. Iltimos, to'g'ri rasm yuklang."})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Unsupported file format. Please upload a valid image.."})
 		return
 	}
 	filename := header.Filename
@@ -137,22 +137,22 @@ func (h *Handler) AddImageHandler(c *gin.Context) {
 	savePath := filepath.Join(h.ImageDir, uniqueFilename)
 	fileBytes, err := io.ReadAll(file)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Faylni o'qib bo'lmadi"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "File could not be read."})
 		return
 	}
 
 	img, err := imaging.Decode(bytes.NewReader(fileBytes))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Noto'g'ri rasm formati"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid image format"})
 		return
 	}
 	err = imaging.Save(img, savePath)
 	if err != nil {
 		log.Printf("Error saving image to %s: %v", savePath, err)
 		if os.IsPermission(err) {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Rasm saqlashda ruxsat rad etildi"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Permission denied to save image"})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Rasmni saqlashda xatolik"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error saving image"})
 		}
 		return
 	}
@@ -165,7 +165,7 @@ func (h *Handler) AddImageHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":  "immage added succesfully",
+		"message":  "image added successfully",
 		"filename": uniqueFilename,
 		"hash":     hash,
 	})

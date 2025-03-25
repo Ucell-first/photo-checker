@@ -17,9 +17,9 @@ import (
 
 // ImageDatabase stores image hashes and features for recognition
 type ImageDatabase struct {
-	hashes map[string]imageInfo
-	mutex  sync.RWMutex
-	cache  *cache.Cache
+	Hashes map[string]imageInfo
+	Mutex  sync.RWMutex
+	Cache  *cache.Cache
 	UseML  bool // Switch between ML or hash-based comparison
 }
 
@@ -44,8 +44,8 @@ type RecognizeResponse struct {
 // NewImageDatabase creates a new image database instance
 func NewImageDatabase() *ImageDatabase {
 	db := &ImageDatabase{
-		hashes: make(map[string]imageInfo),
-		cache:  cache.New(5*time.Minute, 10*time.Minute),
+		Hashes: make(map[string]imageInfo),
+		Cache:  cache.New(5*time.Minute, 10*time.Minute),
 		UseML:  true,
 	}
 	return db
@@ -102,16 +102,16 @@ func (db *ImageDatabase) LoadImages(imageDir string) error {
 			features := im.ExtractImageFeatures(img)
 			info.Features = features
 
-			db.mutex.Lock()
-			db.hashes[hash] = info
-			db.mutex.Unlock()
+			db.Mutex.Lock()
+			db.Hashes[hash] = info
+			db.Mutex.Unlock()
 
 			log.Printf("Loaded image: %s", fileName)
 		}(file.Name())
 	}
 
 	wg.Wait()
-	log.Printf("Loaded %d images into database", len(db.hashes))
+	log.Printf("Loaded %d images into database", len(db.Hashes))
 	return nil
 }
 
@@ -147,17 +147,17 @@ func (db *ImageDatabase) FindMatch(img image.Image, similarityThreshold float64)
 	// Fallback to hash-based matching
 	uploadedHash := im.ComputeDCTHash(img)
 
-	db.mutex.RLock()
-	defer db.mutex.RUnlock()
+	db.Mutex.RLock()
+	defer db.Mutex.RUnlock()
 
-	if len(db.hashes) == 0 {
+	if len(db.Hashes) == 0 {
 		return false, "", 0.0, method
 	}
 
 	bestMatch := ""
 	minDistance := len(uploadedHash)
 
-	for hash, info := range db.hashes {
+	for hash, info := range db.Hashes {
 		distance, err := im.HammingDistance(uploadedHash, hash)
 		if err != nil {
 			continue
@@ -180,13 +180,13 @@ func (db *ImageDatabase) FindMatch(img image.Image, similarityThreshold float64)
 
 // findMatchByFeatures performs ML-based similarity search
 func (db *ImageDatabase) findMatchByFeatures(features []float64, similarityThreshold float64) (bool, string, float64) {
-	db.mutex.RLock()
-	defer db.mutex.RUnlock()
+	db.Mutex.RLock()
+	defer db.Mutex.RUnlock()
 
 	bestMatch := ""
 	maxSimilarity := 0.0
 
-	for _, info := range db.hashes {
+	for _, info := range db.Hashes {
 		if info.Features == nil {
 			continue
 		}
@@ -215,15 +215,15 @@ func (db *ImageDatabase) AddImage(img image.Image, filename string) (string, err
 		Features:  im.ExtractImageFeatures(img),
 	}
 
-	db.mutex.Lock()
-	defer db.mutex.Unlock()
+	db.Mutex.Lock()
+	defer db.Mutex.Unlock()
 
-	for _, existingInfo := range db.hashes {
+	for _, existingInfo := range db.Hashes {
 		if existingInfo.Hash == hash {
 			return "", fmt.Errorf("image already exists: %s", existingInfo.Filename)
 		}
 	}
 
-	db.hashes[hash] = info
+	db.Hashes[hash] = info
 	return hash, nil
 }
